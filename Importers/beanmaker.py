@@ -20,8 +20,8 @@ from beancount.utils.date_utils import parse_date_liberally
 from beancount.core import data
 from beancount.core import flags
 from beancount.ingest import importer
-from beancount.ingest.importers import regexp
 
+DEFAULT = "DEFAULT"
 
 # The set of interpretable columns.
 class Col(enum.Enum):
@@ -77,17 +77,31 @@ class Debit_or_credit(enum.Enum):
     UNCERTAINTY = '[UNCERTAINTY]'
 
 
+def cast_to_decimal(amount):
+    """Cast the amount to either an instance of Decimal or None.
+
+    Args:
+        amount: A string of amount. The format may be '¥1,000.00', '5.20', '200'
+    Returns:
+        The corresponding Decimal of amount.
+    """
+    if amount is None:
+        return None
+    amount = ''.join(amount.split(','))
+    return D(re.findall(r"\d+\.?\d*", amount)[0])
+
+
 def get_amounts(iconfig, row, DRCR_status, allow_zero_amounts=False):
     """Get the amount columns of a row.
 
     Args:
-      iconfig: A dict of Col to row index.
-      row: A row array containing the values of the given row.
-      allow_zero_amounts: Is a transaction with amount D('0.00') okay? If not,
-        return (None, None).
+        iconfig: A dict of Col to row index.
+        row: A row array containing the values of the given row.
+        allow_zero_amounts: Is a transaction with amount D('0.00') okay? If not,
+            return (None, None).
     Returns:
-      A pair of (debit-amount, credit-amount), both of which are either an
-      instance of Decimal or None, or not available.
+        A pair of (debit-amount, credit-amount), both of which are either an
+        instance of Decimal or None, or not available.
     """
     debit, credit = None, None
     if Col.AMOUNT in iconfig:
@@ -102,13 +116,15 @@ def get_amounts(iconfig, row, DRCR_status, allow_zero_amounts=False):
                          for col in [Col.AMOUNT_DEBIT, Col.AMOUNT_CREDIT]]
 
     # If zero amounts aren't allowed, return null value.
-    is_zero_amount = ((credit is not None and D(credit) == ZERO) and
-                      (debit is not None and D(debit) == ZERO))
+    is_zero_amount = ((credit is not None and cast_to_decimal(credit) == ZERO) and
+                      (debit is not None and cast_to_decimal(debit) == ZERO))
     if not allow_zero_amounts and is_zero_amount:
         return (None, None)
 
-    return (-D(debit) if debit else None,
-            D(credit) if credit else None)
+
+    return (-cast_to_decimal(debit) if debit else None,
+            cast_to_decimal(credit) if credit else None)
+
 
 def get_debit_or_credit_status(iconfig, row, DRCR_dict):
     """Get the status which says DEBIT or CREDIT of a row.
@@ -131,10 +147,10 @@ def get_debit_or_credit_status(iconfig, row, DRCR_dict):
 
 
 
-class Importer(regexp.RegexpImporterMixin, importer.ImporterProtocol):
+class Importer(importer.ImporterProtocol):
     """Importer for CSV files."""
 
-    def __init__(self, config, default_account, currency, regexps,
+    def __init__(self, config, default_account, currency,
                  skip_lines: int=0,
                  last4_map: Optional[Dict]=None,
                  categorizer: Optional[Callable]=None,
@@ -151,30 +167,30 @@ class Importer(regexp.RegexpImporterMixin, importer.ImporterProtocol):
         """Constructor.
 
         Args:
-          config: A dict of Col enum types to the names or indexes of the columns.
-          default_account: An account string, the default account to post this to.
-          currency: A currency string, the currenty of this account.
-          regexps: A list of regular expression strings.
-          skip_lines: Skip first x (garbage) lines of file.
-          last4_map: A dict that maps last 4 digits of the card to a friendly string.
-          categorizer: A callable that attaches the other posting (usually expenses)
-            to a transaction with only single posting.
-          institution: An optional name of an institution to rename the files to.
-          debug: Whether or not to print debug information
-          dateutil_kwds: An optional dict defining the dateutil parser kwargs.
-          csv_dialect: A `csv` dialect given either as string or as instance or
-            subclass of `csv.Dialect`.
-          close_flag: A string show the garbage transaction from the STATUS column.
-          DRCR_dict: An optional dict of Debit_or_credit.DEBIT or Debit_or_credit.CREDIT
-            to user-defined debit or credit string occurs in the DRCR column. If DRCR
-            column is revealed and DRCR_dict is None, the status of trasaction will be
-            uncertain
-          assets_account: An optional dict of user-defined
+            config: A dict of Col enum types to the names or indexes of the
+                columns.
+            default_account: An account string, the default account to post
+                this to.
+            currency: A currency string, the currenty of this account.
+            skip_lines: Skip first x (garbage) lines of file.
+            last4_map: A dict that maps last 4 digits of the card to a friendly
+                string.
+            categorizer: A callable that attaches the other posting (usually
+                expenses) to a transaction with only single posting.
+            institution: An optional name of an institution to rename the files
+                to.
+            debug: Whether or not to print debug information.
+            dateutil_kwds: An optional dict defining the dateutil parser kwargs.
+            csv_dialect: A `csv` dialect given either as string or as instance
+                or subclass of `csv.Dialect`.
+            close_flag: A string show the garbage transaction from the STATUS
+                column.
+            DRCR_dict: An optional dict of Debit_or_credit.DEBIT or
+                Debit_or_credit.CREDIT to user-defined debit or credit string
+                occurs in the DRCR column. If DRCR column is revealed and
+                DRCR_dict is None, the status of trasaction will be uncertain.
+            assets_account: An optional dict of user-defined.
         """
-        if isinstance(regexps, str):
-            regexps = [regexps]
-        assert isinstance(regexps, list)
-        regexp.RegexpImporterMixin.__init__(self, regexps)
 
         assert isinstance(config, dict)
         self.config = config
@@ -195,34 +211,91 @@ class Importer(regexp.RegexpImporterMixin, importer.ImporterProtocol):
         self.assets_account = assets_account if isinstance(assets_account, dict) else {}
         self.debit_account = debit_account if isinstance(debit_account, dict) else {}
         self.credit_account = credit_account if isinstance(credit_account, dict) else {}
-        if Debit_or_credit.DEBIT not in self.debit_account:
-            self.debit_account[Debit_or_credit.DEBIT] = self.default_account
-        if Debit_or_credit.CREDIT not in self.credit_account:
-            self.credit_account[Debit_or_credit.CREDIT] = self.default_account
+        if DEFAULT not in self.assets_account:
+            self.assets_account[DEFAULT] = self.default_account
+        if DEFAULT not in self.debit_account:
+            self.debit_account[DEFAULT] = self.default_account
+        if DEFAULT not in self.credit_account:
+            self.credit_account[DEFAULT] = self.default_account
 
         # FIXME: This probably belongs to a mixin, not here.
         self.institution = institution
         self.categorizer = categorizer
 
     def name(self):
+        """Generate an importer name printed out.
+
+        This method provides a unique id for each importer instance. It’s
+        convenient to be able to refer to your importers with a unique name;
+        it gets printed out by the identification process, for instance.
+
+        Returns:
+            A name str.
+        """
         return '{}: "{}"'.format(super().name(), self.file_account(None))
 
+    
     def identify(self, file):
+        """Whether the importer can handle the given file.
+        
+        This method just returns true if this importer can handle the given
+        file. You must implement this method, and all the tools invoke it to
+        figure out the list of (file, importer) pairs. This function is used
+        by bean-identity and bean-extract tools.
+        
+        Returns:
+            A bool to identity whether or not.
+        """
         if file.mimetype() != 'text/csv':
             return False
-        return super().identify(file)
+        iconfig, has_header = normalize_config(self.config, file.head(-1))
+        if len(iconfig) != len(self.config):
+            return False
+        return True
 
     def file_account(self, _):
+        """Provide the root account.
+        
+        This method returns the root account associated with this importer.
+        This is where the downloaded file will be moved by the filing script.
+        This function is used by bean-file tool.
+        
+        Returns:
+            A root acount name str.
+        """
         return self.default_account
 
     def file_name(self, file):
+        """Rename the given file.
+        
+         It’s most convenient not to bother renaming downloaded files.
+         Oftentimes, the files generated from your bank either all have a
+         unique name and they end up getting renamed by your browser when you
+         download multiple ones and the names collide. This function is used
+         for the importer to provide a “nice” name to file the download under.
+        
+        Returns:
+            A new file name str.
+        """
+        
+        
         filename = path.splitext(path.basename(file.name))[0]
         if self.institution:
             filename = '{}.{}'.format(self.institution, filename)
         return '{}.csv'.format(filename)
 
     def file_date(self, file):
-        "Get the maximum date from the file."
+        """Get the maximum date from the file.
+        
+        If a date can be extracted from the statement’s contents, return it
+        here. This is useful for dated PDF statements… it’s often possible
+        using regular expressions to grep out the date from a PDF converted to
+        text. This allows the filing script to prepend a relevant date instead
+        of using the date when the file was downloaded (the default).
+        
+        """
+        
+        
         iconfig, has_header = normalize_config(self.config, file.head(-1))
         if Col.DATE in iconfig:
             reader = iter(csv.reader(open(file.name)))
@@ -243,6 +316,17 @@ class Importer(regexp.RegexpImporterMixin, importer.ImporterProtocol):
             return max_date
 
     def extract(self, file):
+        """Parse and extract Beanount contents from the given file.
+        
+        This is called to attempt to extract some Beancount directives from the
+        file contents. It must create the directives by instantiating the
+        objects defined in beancount.core.data and return them. This function
+        is used by bean-extract tool.
+
+        Returns:
+            A list of beancount.core.data object, and each of them can be
+            converted into a command-line accounting.
+        """
         entries = []
 
         # Normalize the configuration to fetch by index.
@@ -341,16 +425,16 @@ class Importer(regexp.RegexpImporterMixin, importer.ImporterProtocol):
                     continue
                 units = Amount(amount, self.currency)
 
-                # Uncertain transaction
+                # Uncertain transaction, maybe capital turnover
                 if DRCR_status == Debit_or_credit.UNCERTAINTY:
                     if remark and len(remark.split("-")) == 2:
                         remarks = remark.split("-")
-                        primary_account = self.assets_account[remarks[1]]
-                        secondary_account = self.assets_account[remarks[0]]
+                        primary_account = mapping_account(self.assets_account, remarks[1])
+                        secondary_account = mapping_account(self.assets_account, remarks[0])
                         txn.postings.append(
                             data.Posting(primary_account, -units, None, None, None, None))
                         txn.postings.append(
-                            data.Posting(secondary_account, units, None, None, None, None))
+                            data.Posting(secondary_account, None, None, None, None, None))
                     else:
                         txn.postings.append(
                             data.Posting(self.default_account, units, None, None, None, None))
@@ -359,27 +443,25 @@ class Importer(regexp.RegexpImporterMixin, importer.ImporterProtocol):
                 # Debit or Credit transaction
                 else:
                     # Primary posting
-                    primary_account = self.default_account
-                    for key in self.assets_account.keys():
-                        if re.search(key, remark):
-                            primary_account = self.assets_account[key]
-                            break
+                    # Rename primary account if remark field matches one of assets account
+                    primary_account = mapping_account(self.assets_account, remark)
                     txn.postings.append(
                         data.Posting(primary_account, units, None, None, None, None))
+                    
                     # Secondary posting
+                    # Rename secondary account by credit account or debit account based on DRCR status
                     payee_narration = payee + narration
-                    _account = self.credit_account
-                    if DRCR_status == Debit_or_credit.DEBIT:
-                        _account = self.debit_account
-                    secondary_account = _account[DRCR_status]
-                    for key in _account.keys():
-                        if key in Debit_or_credit:
-                            continue
-                        if re.search(key, payee_narration):
-                            secondary_account = _account[key]
-                            break
+                    _account = self.credit_account if DRCR_status == Debit_or_credit.CREDIT else self.debit_account
+                    secondary_account = mapping_account(_account, payee_narration)
+#                    secondary_account = _account[DEFAULT]
+#                    for key in _account.keys():
+#                        if key == DEFAULT:
+#                            continue
+#                        if re.search(key, payee_narration):
+#                            secondary_account = _account[key]
+#                            break
                     txn.postings.append(
-                        data.Posting(secondary_account, -units, None, None, None, None))
+                        data.Posting(secondary_account, None, None, None, None, None))
 
             # Attach the other posting(s) to the transaction.
             if isinstance(self.categorizer, collections.Callable):
@@ -440,7 +522,10 @@ def normalize_config(config, head):
         index_config = {}
         for field_type, field in config.items():
             if isinstance(field, str):
-                field = field_map[field]
+                try:
+                    field = field_map[field]
+                except KeyError:
+                    break
             index_config[field_type] = field
     else:
         if any(not isinstance(field, int)
@@ -449,3 +534,26 @@ def normalize_config(config, head):
                              "{}".format(config))
         index_config = config
     return index_config, has_header
+
+
+def mapping_account(account_map, keyword):
+    """Finding which key of account_map contains the keyword, return the corresponding value.
+
+    Args:
+      account_map: A dict of account keywords string (each keyword separated by "|") to account name.
+      keyword: A keyword string.
+    Return:
+      An account name string.
+    Raises:
+      KeyError: If "DEFAULT" keyword is not in account_map.
+    """
+    if DEFAULT not in account_map:
+        raise KeyError("DEFAULT is not in " + account_map.__str__)
+    account_name = account_map[DEFAULT]
+    for account_keywords in account_map.keys():
+        if account_keywords == DEFAULT:
+            continue
+        if re.search(account_keywords, keyword):
+            account_name = account_map[account_keywords]
+            break
+    return account_name

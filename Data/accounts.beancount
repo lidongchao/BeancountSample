@@ -139,19 +139,19 @@ option "operating_currency" "CNY"
 2017-12-31 pad Assets:MoneyFound:ChangeTong Equity:Opening-Balances
 
 ;-------------------------BALANCE ACCOUNTS----------------------------
-2018-01-01 balance Liabilities:VirtualCard:Huabei -234.50 CNY
-2018-01-01 balance Liabilities:VirtualCard:JDbaitiao -50.00 CNY
-2018-01-01 balance Liabilities:CreditCard:CMB -3490.20 CNY
+2018-01-01 balance Liabilities:VirtualCard:Huabei 0.00 CNY
+2018-01-01 balance Liabilities:VirtualCard:JDbaitiao 0.00 CNY
+2018-01-01 balance Liabilities:CreditCard:CMB 0.00 CNY
 
-2018-01-01 balance Assets:Cash 100.00 CNY
-2018-01-01 balance Assets:VirtualCard:Alipay 0.02 CNY
-2018-01-01 balance Assets:VirtualCard:Wechat 0.02 CNY
-2018-01-01 balance Assets:DepositCard:CCB 350.29 CNY
-2018-01-01 balance Assets:DepositCard:CMB 500.00 CNY
-2018-01-01 balance Assets:Receivables 50.00 CNY
+2018-01-01 balance Assets:Cash 0.00 CNY
+2018-01-01 balance Assets:VirtualCard:Alipay 0.00 CNY
+2018-01-01 balance Assets:VirtualCard:Wechat 0.00 CNY
+2018-01-01 balance Assets:DepositCard:CCB 0.00 CNY
+2018-01-01 balance Assets:DepositCard:CMB 0.00 CNY
+2018-01-01 balance Assets:Receivables 0.00 CNY
 
-2018-01-01 balance Assets:MoneyFound:Yuebao 12090.28 CNY
-2018-01-01 balance Assets:MoneyFound:ChangeTong 8029.97 CNY
+2018-01-01 balance Assets:MoneyFound:Yuebao 0.00 CNY
+2018-01-01 balance Assets:MoneyFound:ChangeTong 0.00 CNY
 
 ;-------------------------END INITIALIZE ACCOUNTS---------------------
 

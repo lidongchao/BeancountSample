@@ -9,8 +9,8 @@ option "operating_currency" "CNY"
 2017-12-31 open Income:Alimony CNY
 2017-12-31 note Income:Alimony "收入-生活费"
 
-2017-12-31 open Income:MoneyFound CNY
-2017-12-31 note Income:MoneyFound "收入-货币基金"
+2017-12-31 open Income:MoneyFund CNY
+2017-12-31 note Income:MoneyFund "收入-货币基金"
 
 2017-12-31 open Income:Bonus CNY
 2017-12-31 note Income:Bonus "收入-红包|奖励金"
@@ -139,19 +139,19 @@ option "operating_currency" "CNY"
 2017-12-31 pad Assets:MoneyFound:ChangeTong Equity:Opening-Balances
 
 ;-------------------------BALANCE ACCOUNTS----------------------------
-2018-01-01 balance Liabilities:VirtualCard:Huabei 0.00 CNY
-2018-01-01 balance Liabilities:VirtualCard:JDbaitiao 0.00 CNY
-2018-01-01 balance Liabilities:CreditCard:CMB 0.00 CNY
+2018-01-01 balance Liabilities:VirtualCard:Huabei -500.00 CNY
+2018-01-01 balance Liabilities:VirtualCard:JDbaitiao -10.00 CNY
+2018-01-01 balance Liabilities:CreditCard:CMB -300.00 CNY
 
-2018-01-01 balance Assets:Cash 0.00 CNY
-2018-01-01 balance Assets:VirtualCard:Alipay 0.00 CNY
-2018-01-01 balance Assets:VirtualCard:Wechat 0.00 CNY
-2018-01-01 balance Assets:DepositCard:CCB 0.00 CNY
-2018-01-01 balance Assets:DepositCard:CMB 0.00 CNY
-2018-01-01 balance Assets:Receivables 0.00 CNY
+2018-01-01 balance Assets:Cash 0.10 CNY
+2018-01-01 balance Assets:VirtualCard:Alipay 100000.00 CNY
+2018-01-01 balance Assets:VirtualCard:Wechat 100000.00 CNY
+2018-01-01 balance Assets:DepositCard:CCB 5000000.00 CNY
+2018-01-01 balance Assets:DepositCard:CMB 3500000.00 CNY
+2018-01-01 balance Assets:Receivables 9500000.00 CNY
 
-2018-01-01 balance Assets:MoneyFound:Yuebao 0.00 CNY
-2018-01-01 balance Assets:MoneyFound:ChangeTong 0.00 CNY
+2018-01-01 balance Assets:MoneyFound:Yuebao 510000.00 CNY
+2018-01-01 balance Assets:MoneyFound:ChangeTong 50000.00 CNY
 
 ;-------------------------END INITIALIZE ACCOUNTS---------------------
 
